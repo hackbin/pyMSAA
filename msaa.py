@@ -243,6 +243,39 @@ SELFLAG_REMOVESELECTION 16
             return AccRoleNameMap.get(iRole)
         except:
             return None
+            
+    def getChilds(self, bRecursion = False):
+        '''
+        获取所有子控件
+        '''
+        result = []
+        try:
+            IEnumVARIANT = self.IAccessible.QueryInterface(comtypes.automation.IEnumVARIANT)
+        except comtypes.COMError:
+            IEnumVARIANT = None
+        childCount = self.IAccessible.accChildCount
+        for index in range(childCount):
+            varChild = comtypes.automation.VARIANT()
+            fetched = ctypes.c_ulong()
+            if IEnumVARIANT:
+                varChild.vt = comtypes.automation.VT_DISPATCH
+                IEnumVARIANT._IEnumVARIANT__com_Next(1, varChild, fetched)
+            else:
+                varChild.vt = comtypes.automation.VT_I4
+                varChild.value = index + 1
+            if varChild.vt == comtypes.automation.VT_I4:
+                IDispatch = ctypes.POINTER(comtypes.automation.IDispatch)()
+                self.IAccessible._IAccessible__com__get_accChild(varChild, ctypes.byref(IDispatch))
+            else:
+                IDispatch = varChild.value
+            if IDispatch:
+                IAccessible = comtypes.client.dynamic.Dispatch(IDispatch).QueryInterface(comtypes.gen.Accessibility.IAccessible)
+                if IAccessible:
+                    element = Element(IAccessible, 0)
+                    result.append(element)
+                    if bRecursion:
+                        result.extend(element.getChilds(True))
+        return result
 
     def __iter__(self):
         '''Iterate all child Element'''
